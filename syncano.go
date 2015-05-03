@@ -181,11 +181,9 @@ func (s *Syncano) authenticate() (err error) {
 		s.authenticated, err = s.validateAPIKEY()
 		return
 	case s.email != "" && s.password != "":
-		apiKey, er := doAuthenticate(s.email, s.password, s.client)
-		if er != nil {
-			msg := "syncano: Authentication failed - " + er.Error()
-			err = er
-			gLOGGER.Println(msg)
+		var apiKey APIKey
+		apiKey, err = doAuthenticate(s.email, s.password, s.client)
+		if err != nil {
 			return
 		}
 		s.apiKey = apiKey
