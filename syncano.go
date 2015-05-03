@@ -49,6 +49,22 @@ func (e *httpError) Error() string {
 	return "Syncano: HTTP Error with status code of " + strconv.Itoa(e.StatusCode)
 }
 
+//InfrastructureError type to represent the adapter error - checked excpetion
+type InfrastructureError struct {
+	error
+}
+
+func (e *InfrastructureError) Error() string {
+	return e.error.Error()
+}
+
+func NewInfrastructureError(msg string) (i *InfrastructureError) {
+	i = new(InfrastructureError)
+	err := errors.New(msg)
+	i.error = err
+	return
+}
+
 //ClientError type used for the http status code from 400 to 499
 type ClientError struct {
 	httpError
@@ -122,7 +138,8 @@ func (s *Syncano) IsAuthenticated() bool {
 func (s *Syncano) validateAPIKEY() (valid bool, err error) {
 	accDetails, err := s.getAccountDetails()
 	if err != nil {
-		gLOGGER.Println("syncano: Authentication failed for the API KEY - " + string(s.apiKey) + " , more info -" + err.Error())
+		msg := "syncano: Authentication failed for the API KEY - " + string(s.apiKey) + " , more info -" + err.Error()
+		gLOGGER.Println(msg)
 	}
 	valid = accDetails != nil
 	return
@@ -156,7 +173,7 @@ func (s *Syncano) authenticate() (err error) {
 	if err != nil {
 		msg := "syncano: Authentication failed - " + err.Error()
 		gLOGGER.Println(msg)
-		return errors.New(msg)
+		return
 	}
 
 	s.apiKey = apiKey
@@ -190,7 +207,7 @@ func doAuthenticate(email Email, password Password, client *http.Client) (apiKey
 	reader := bytes.NewReader(marshalledBody)
 	response, err := client.Post(url.String(), ContentType, reader)
 	if err != nil {
-		err = errors.New("syncano: Request failed - " + err.Error())
+		err = NewInfrastructureError("syncano: Request failed - " + err.Error())
 		return
 	}
 	var m authResponse
@@ -214,21 +231,23 @@ func GetConnectionCredentialsFromEnv() *ConnectionCredentials {
 }
 
 //Connect function returns the instance of syncano type, if it is authenticated or returns an error
-func Connect(connCred *ConnectionCredentials, logger StdLogger) (*Syncano, error) {
+func Connect(connCred *ConnectionCredentials, logger StdLogger) (syncano *Syncano, err error) {
 	gLOGGER = logger
 	client := getConn(DefaultServer, connCred.SkipSSLVerification)
-	syncano := &Syncano{
-		client:       client,
-		apiKey:       connCred.APIKey,
-		InstanceName: connCred.InstanceName,
-		InstanceKey:  connCred.InstanceKey,
-		email:        connCred.Email,
-		password:     connCred.Password,
+	syncano = &Syncano{
+		client:        client,
+		apiKey:        connCred.APIKey,
+		InstanceName:  connCred.InstanceName,
+		InstanceKey:   connCred.InstanceKey,
+		email:         connCred.Email,
+		password:      connCred.Password,
+		authenticated: false,
 	}
-	if err := syncano.authenticate(); err != nil {
+	err = syncano.authenticate()
+	if err != nil {
 		return nil, err
 	}
-	return syncano, nil
+	return
 }
 
 func getConn(serverName string, skipSSLVerify bool) *http.Client {
@@ -247,7 +266,7 @@ func getConn(serverName string, skipSSLVerify bool) *http.Client {
 	return client
 }
 
-func parseResponse(response *http.Response, v interface{}) error {
+func parseResponse(response *http.Response, v interface{}) (err error) {
 	defer response.Body.Close()
 
 	switch {
@@ -262,13 +281,13 @@ func parseResponse(response *http.Response, v interface{}) error {
 	}
 	bytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return errors.New("syncano: Error in reading the response body -" + err.Error())
+		return NewInfrastructureError("syncano: Error in reading the response body -" + err.Error())
 	}
 	err = json.Unmarshal(bytes, v)
 	if err != nil {
-		return errors.New("syncano: error in parsing response body bytes - " + string(bytes[:len(bytes)]) + "to type -" + reflect.TypeOf(v).String())
+		return NewInfrastructureError("syncano: error in parsing response body bytes - " + string(bytes[:len(bytes)]) + "to type -" + reflect.TypeOf(v).String())
 	}
-	return err
+	return
 }
 
 // Won't compile if StdLogger can't be realized by a log.Logger

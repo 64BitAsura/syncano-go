@@ -67,6 +67,8 @@ func TestSyncanoAPI(t *testing.T) {
 		Convey("Using invalid email and password", func() {
 			syncano, err := Connect(&ConnectionCredentials{SkipSSLVerification: true, Email: "big.boy@email.com", Password: "password"}, logger)
 			So(err, ShouldNotBeNil)
+			_, ok := err.(*ClientError)
+			So(ok, ShouldBeTrue)
 			Convey("syncano instance be nil", func() {
 				So(syncano, ShouldBeNil)
 			})
@@ -75,6 +77,8 @@ func TestSyncanoAPI(t *testing.T) {
 		Convey("Using invalid API key", func() {
 			syncano, err := Connect(&ConnectionCredentials{SkipSSLVerification: true, APIKey: "xx-xxx-xxxx-xxxxx"}, logger)
 			So(err, ShouldNotEqual, nil)
+			_, ok := err.(*ClientError)
+			So(ok, ShouldBeTrue)
 			Convey("syncano instance be nil", func() {
 				So(syncano, ShouldEqual, nil)
 			})
