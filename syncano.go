@@ -101,6 +101,9 @@ type InstanceName string
 //InstanceKey to represent the syncano instance api key
 type InstanceKey string
 
+//InstanceDescription type to represent the syncano instance's description
+type InstanceDescription string
+
 //Email type to represent the syncano's account id
 type Email string
 
@@ -120,6 +123,13 @@ type Syncano struct {
 
 //Instance to represent the syncano instance
 type Instance struct {
+	InstanceName
+	InstanceKey
+}
+
+func (i *Instance) validateInstance() (result bool, err error) {
+
+	return
 }
 
 //AccountDetails type to represent the syncano account details
@@ -136,7 +146,7 @@ func (s *Syncano) IsAuthenticated() bool {
 }
 
 func (s *Syncano) validateAPIKEY() (valid bool, err error) {
-	accDetails, err := s.getAccountDetails()
+	accDetails, err := s.GetAccountDetails()
 	if err != nil {
 		msg := "syncano: Authentication failed for the API KEY - " + string(s.apiKey) + " , more info -" + err.Error()
 		gLOGGER.Println(msg)
@@ -145,7 +155,7 @@ func (s *Syncano) validateAPIKEY() (valid bool, err error) {
 	return
 }
 
-func (s *Syncano) getAccountDetails() (accDetails *AccountDetails, err error) {
+func (s *Syncano) GetAccountDetails() (accDetails *AccountDetails, err error) {
 	url, _ := url.Parse(gAPIRoot)
 	url.Path = APIVersion + "/" + AccountPath
 	url.RawQuery = "api_key=" + string(s.apiKey)
@@ -160,24 +170,30 @@ func (s *Syncano) getAccountDetails() (accDetails *AccountDetails, err error) {
 }
 
 func (s *Syncano) authenticate() (err error) {
-	if ok := s.IsAuthenticated(); ok {
-		return
-	}
 
-	if s.apiKey != "" {
+	switch {
+	case s.authenticated:
+		return
+	case s.InstanceName != "" && s.InstanceKey != "":
+		//TODO - Need to include the logic
+		return
+	case s.apiKey != "":
 		s.authenticated, err = s.validateAPIKEY()
 		return
-	}
-
-	apiKey, err := doAuthenticate(s.email, s.password, s.client)
-	if err != nil {
-		msg := "syncano: Authentication failed - " + err.Error()
-		gLOGGER.Println(msg)
+	case s.email != "" && s.password != "":
+		apiKey, er := doAuthenticate(s.email, s.password, s.client)
+		if er != nil {
+			msg := "syncano: Authentication failed - " + er.Error()
+			err = er
+			gLOGGER.Println(msg)
+			return
+		}
+		s.apiKey = apiKey
+		s.authenticated = true
 		return
+	default:
+		err = NewInfrastructureError("Please sepcify login credentials")
 	}
-
-	s.apiKey = apiKey
-	s.authenticated = true
 	return
 }
 
