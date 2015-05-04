@@ -127,11 +127,6 @@ type Instance struct {
 	InstanceKey
 }
 
-func (i *Instance) validateInstance() (result bool, err error) {
-
-	return
-}
-
 //AccountDetails type to represent the syncano account details
 type AccountDetails struct {
 	ID        int `json:"id"`
@@ -170,12 +165,8 @@ func (s *Syncano) GetAccountDetails() (accDetails *AccountDetails, err error) {
 }
 
 func (s *Syncano) authenticate() (err error) {
-
 	switch {
 	case s.authenticated:
-		return
-	case s.InstanceName != "" && s.InstanceKey != "":
-		//TODO - Need to include the logic
 		return
 	case s.apiKey != "":
 		s.authenticated, err = s.validateAPIKEY()
@@ -192,6 +183,10 @@ func (s *Syncano) authenticate() (err error) {
 	default:
 		err = NewInfrastructureError("Please sepcify login credentials")
 	}
+	return
+}
+
+func (s *Syncano) validateInstance() (result bool, err error) {
 	return
 }
 
@@ -270,7 +265,6 @@ func getConn(serverName string, skipSSLVerify bool) *http.Client {
 	//2- create Transport layer and replace tls config to it
 	//3- create http client and replace transport layer
 	//4- return the client
-
 	tlsConfig := &tls.Config{InsecureSkipVerify: skipSSLVerify, ServerName: serverName}
 	transport, _ := http.DefaultTransport.(*http.Transport)
 	transport.TLSClientConfig = tlsConfig
@@ -282,7 +276,6 @@ func getConn(serverName string, skipSSLVerify bool) *http.Client {
 
 func parseResponse(response *http.Response, v interface{}) (err error) {
 	defer response.Body.Close()
-
 	switch {
 	case 400 <= response.StatusCode && response.StatusCode <= 499:
 		return &ClientError{httpError: httpError{response.StatusCode}}
@@ -310,9 +303,6 @@ var _ StdLogger = &log.Logger{}
 // Won't compile if http.RoundTripper can't be realized by a http.Transport
 var _ http.RoundTripper = &http.Transport{}
 
-// StdLogger is what your logrus-enabled library should take, that way
-// it'll accept a stdlib logger and a logrus logger. There's no standard
-// interface, this is the closest we get, unfortunately.
 type StdLogger interface {
 	Print(...interface{})
 	Printf(string, ...interface{})
