@@ -111,7 +111,7 @@ type Email string
 type Password string
 
 //Syncano type to represent the syncano
-type Syncano struct {
+type syncano struct {
 	client *http.Client
 	apiKey APIKey
 	InstanceName
@@ -119,6 +119,11 @@ type Syncano struct {
 	email         Email
 	password      Password
 	authenticated bool
+}
+
+//Syncano type to expose unexported syncanco type's exported methods as type
+type Syncano struct {
+	syncano
 }
 
 //Instance to represent the syncano instance
@@ -136,11 +141,11 @@ type AccountDetails struct {
 }
 
 // IsAuthenticated method to check the invoking syncano instance is authenticated!
-func (s *Syncano) IsAuthenticated() bool {
+func (s *syncano) IsAuthenticated() bool {
 	return s.authenticated
 }
 
-func (s *Syncano) validateAPIKEY() (valid bool, err error) {
+func (s *syncano) validateAPIKEY() (valid bool, err error) {
 	accDetails, err := s.GetAccountDetails()
 	if err != nil {
 		msg := "syncano: Authentication failed for the API KEY - " + string(s.apiKey) + " , more info -" + err.Error()
@@ -150,7 +155,7 @@ func (s *Syncano) validateAPIKEY() (valid bool, err error) {
 	return
 }
 
-func (s *Syncano) GetAccountDetails() (accDetails *AccountDetails, err error) {
+func (s *syncano) GetAccountDetails() (accDetails *AccountDetails, err error) {
 	url, _ := url.Parse(gAPIRoot)
 	url.Path = APIVersion + "/" + AccountPath
 	url.RawQuery = "api_key=" + string(s.apiKey)
@@ -164,7 +169,7 @@ func (s *Syncano) GetAccountDetails() (accDetails *AccountDetails, err error) {
 	return
 }
 
-func (s *Syncano) authenticate() (err error) {
+func (s *syncano) authenticate() (err error) {
 	switch {
 	case s.authenticated:
 		return
@@ -186,7 +191,7 @@ func (s *Syncano) authenticate() (err error) {
 	return
 }
 
-func (s *Syncano) validateInstance() (result bool, err error) {
+func (s *syncano) validateInstance() (result bool, err error) {
 	return
 }
 
@@ -240,10 +245,10 @@ func GetConnectionCredentialsFromEnv() *ConnectionCredentials {
 }
 
 //Connect function returns the instance of syncano type, if it is authenticated or returns an error
-func Connect(connCred *ConnectionCredentials, logger StdLogger) (syncano *Syncano, err error) {
+func Connect(connCred *ConnectionCredentials, logger StdLogger) (S *Syncano, err error) {
 	gLOGGER = logger
 	client := getConn(DefaultServer, connCred.SkipSSLVerification)
-	syncano = &Syncano{
+	s := syncano{
 		client:        client,
 		apiKey:        connCred.APIKey,
 		InstanceName:  connCred.InstanceName,
@@ -252,10 +257,11 @@ func Connect(connCred *ConnectionCredentials, logger StdLogger) (syncano *Syncan
 		password:      connCred.Password,
 		authenticated: false,
 	}
-	err = syncano.authenticate()
+	err = s.authenticate()
 	if err != nil {
 		return nil, err
 	}
+	S = &Syncano{s}
 	return
 }
 
