@@ -39,14 +39,23 @@ func init() {
 	gAPIServer = DefaultServer
 }
 
+// HTTPError interface to group the all http errors - Informational, Redirect, Client side or Server side errors
+type HTTPError interface {
+	StatusCode() int
+}
+
 type httpError struct {
-	StatusCode int
+	statusCode int
+}
+
+func (h *httpError) StatusCode() int {
+	return h.statusCode
 }
 
 func (*httpError) RuntimeError() {}
 
 func (e *httpError) Error() string {
-	return "Syncano: HTTP Error with status code of " + strconv.Itoa(e.StatusCode)
+	return "Syncano: HTTP Error with status code of " + strconv.Itoa(e.statusCode)
 }
 
 //InfrastructureError type to represent the adapter error - checked excpetion
@@ -119,6 +128,7 @@ type syncano struct {
 	email         Email
 	password      Password
 	authenticated bool
+	Instance
 }
 
 //Syncano type to expose unexported syncanco type's exported methods as type
@@ -261,6 +271,7 @@ func Connect(connCred *ConnectionCredentials, logger StdLogger) (S *Syncano, err
 	if err != nil {
 		return nil, err
 	}
+	//TODO - need to include logic to validate the instance, if any mentioned
 	S = &Syncano{s}
 	return
 }
